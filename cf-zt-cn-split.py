@@ -17,38 +17,38 @@ HEADERS = {
 
 MAX_RULES = 4000
 
-# 方案B：gaoyifan 按运营商分列，只取三大运营商，覆盖率 >95%
-OPERATOR_URLS = {
-    "chinatelecom": "https://gaoyifan.github.io/china-operator-ip/chinanet.txt",
-    "chinaunicom":  "https://gaoyifan.github.io/china-operator-ip/unicom.txt",
-    "chinamobile":  "https://gaoyifan.github.io/china-operator-ip/cmcc.txt",
-}
+# 方案A：gaoyifan 全运营商聚合版，条目数 ~3000
+IP_URL = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 
-# 方案A（备用）：IPdeny 聚合版
-# IP_URL = "https://www.ipdeny.com/ipblocks/data/aggregated/cn-aggregated.zone"
+# 方案B（备用）：gaoyifan 按运营商分列，三大运营商合并去重（未聚合，条目数 ~8500）
+# OPERATOR_URLS = {
+#    "chinatelecom": "https://gaoyifan.github.io/china-operator-ip/chinanet.txt",
+#    "chinaunicom":  "https://gaoyifan.github.io/china-operator-ip/unicom.txt",
+#    "chinamobile":  "https://gaoyifan.github.io/china-operator-ip/cmcc.txt",
+# }
 
 # DOMAIN_URL = "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/accelerated-domains.china.conf"
 
 
-def get_cn_cidrs_by_operator():
-    """合并三大运营商 CIDR，去重后返回"""
-    cidrs = []
-    for name, url in OPERATOR_URLS.items():
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-        lines = [line.strip() for line in r.text.splitlines() if line.strip() and not line.startswith('#')]
-        print(f"   {name}: {len(lines)} 条")
-        cidrs += lines
-    unique = list(set(cidrs))
-    print(f"   去重后共 {len(unique)} 条")
-    return unique
+def get_cn_cidrs():
+    """从 gaoyifan 聚合列表拉取 CN CIDR"""
+    r = requests.get(IP_URL, timeout=30)
+    r.raise_for_status()
+    return [line.strip() for line in r.text.splitlines() if line.strip() and not line.startswith('#')]
 
 
-# def get_cn_cidrs():
-#     """方案A（备用）：从 IPdeny 拉取聚合后的 CN CIDR 列表"""
-#     r = requests.get(IP_URL, timeout=30)
-#     r.raise_for_status()
-#     return [line.strip() for line in r.text.splitlines() if line.strip() and not line.startswith('#')]
+# def get_cn_cidrs_by_operator():
+#     """方案B（备用）：合并三大运营商 CIDR，去重后返回"""
+#     cidrs = []
+#     for name, url in OPERATOR_URLS.items():
+#         r = requests.get(url, timeout=30)
+#         r.raise_for_status()
+#         lines = [line.strip() for line in r.text.splitlines() if line.strip() and not line.startswith('#')]
+#         print(f"   {name}: {len(lines)} 条")
+#         cidrs += lines
+#     unique = list(set(cidrs))
+#     print(f"   去重后共 {len(unique)} 条")
+#     return unique
 
 
 # def get_cn_domains():
@@ -91,9 +91,9 @@ def update_split_tunnels(cidrs):
 
 
 if __name__ == "__main__":
-    print("🔄 拉取最新 CN geo 数据（三大运营商）...")
-    cidrs = get_cn_cidrs_by_operator()
-    print(f"   最多取前 {MAX_RULES} 条上传")
+    print("🔄 拉取最新 CN geo 数据（gaoyifan 聚合版）...")
+    cidrs = get_cn_cidrs()
+    print(f"   获取到 {len(cidrs)} 条 CIDR（最多取前 {MAX_RULES} 条）")
 
     # domains = get_cn_domains()
     # print(f"   获取到 {len(domains)} 条域名")
