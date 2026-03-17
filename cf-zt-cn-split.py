@@ -43,7 +43,8 @@ def update_split_tunnels(cidrs, domains):
     routes = [{"address": ip} for ip in cidrs] + [{"address": dom} for dom in domains]
     payload = {"mode": MODE, "routes": routes[:8000]}
     
-    url = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/devices/settings/profiles/{PROFILE_ID}/split_tunnels"
+    #url = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/devices/settings/profiles/{PROFILE_ID}/split_tunnels"
+    url = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/devices/policy/{PROFILE_ID}/split_tunnels/exclude"
     resp = requests.put(url, json=payload, headers=HEADERS)
     
     if resp.status_code in (200, 204):
