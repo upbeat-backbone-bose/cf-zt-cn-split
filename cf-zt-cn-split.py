@@ -1,6 +1,5 @@
 import requests
 import os
-import re
 
 CF_API_TOKEN = os.getenv("CF_API_TOKEN")
 ACCOUNT_ID   = os.getenv("CF_ACCOUNT_ID")
@@ -16,26 +15,26 @@ HEADERS = {
 }
 
 MAX_RULES   = 4000
-MAX_DOMAINS = 2500
-MAX_IPS     = MAX_RULES - MAX_DOMAINS  # 1500
+MAX_IPS     = 3000  # gaoyifan china.txt 实际条目数约 3000
+MAX_DOMAINS = MAX_RULES - MAX_IPS  # 1000
 
-# 域名：Loyalsoldier 精选直连域名（人工维护，质量高，条目可控）
+# 域名：Loyalsoldier 精选直连域名
 DOMAIN_URL = "https://raw.githubusercontent.com/Loyalsoldier/surge-rules/release/direct.txt"
 
-# IP：ipverse 基于注册局数据的超网聚合（~1600 条，权威且条目少）
-IP_URL = "https://raw.githubusercontent.com/ipverse/rir-ip/master/country/cn/ipv4-aggregate.txt"
+# IP：gaoyifan 全运营商聚合版（已验证可用，~3000 条）
+IP_URL = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt"
 
-# 备用 IP 数据源（按条目数从少到多）
+# 备用 IP 数据源
+# ipverse（当前 404，路径待确认）:
+#   https://raw.githubusercontent.com/ipverse/rir-ip/master/country/cn/ipv4-aggregate.txt
 # IPdeny aggregated (~2200 条):
 #   https://www.ipdeny.com/ipblocks/data/aggregated/cn-aggregated.zone
 # metowolf/iplist (~1700 条):
 #   https://raw.githubusercontent.com/metowolf/iplist/master/data/special/china.txt
-# gaoyifan 聚合版 (~3000 条):
-#   https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt
 
 
 def get_cn_cidrs():
-    """从 ipverse 拉取基于注册局数据聚合的 CN CIDR 列表"""
+    """从 gaoyifan 拉取全运营商聚合的 CN CIDR 列表"""
     r = requests.get(IP_URL, timeout=30)
     r.raise_for_status()
     cidrs = [line.strip() for line in r.text.splitlines() if line.strip() and not line.startswith('#')]
