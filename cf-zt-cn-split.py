@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 MAX_RULES       = 4000
-TARGET_DOMAIN_N = 100  # 期望域名条数，剩余配额给 IP
+TARGET_DOMAIN_N = 0  # 期望域名条数，剩余配额给 IP
 
 # 合法域名正则：只保留标准域名格式，过滤脏数据
 VALID_DOMAIN_RE = re.compile(r'^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$')
