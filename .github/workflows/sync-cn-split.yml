@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 3 * * *'      # 每天北京时间 11:00（UTC 3:00）
+    - cron: '0 3 * * 0'  # 每周日北京时间11:00（UTC 3:00）
   workflow_dispatch:         # 手动触发按钮
 
 jobs:
