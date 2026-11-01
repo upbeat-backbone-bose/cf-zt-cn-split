@@ -1,6 +1,8 @@
 name: 每日同步 CN Split Tunnels 到 Cloudflare Zero Trust
+# contents: write 供保活步骤向本仓库提交时间戳（重置 GitHub 60 天无活动计时，
+# 防止 scheduled workflow 被自动停用）
 permissions:
-  contents: read
+  contents: write
 
 on:
   schedule:
@@ -11,10 +13,11 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2/v6.0.3
 
-      - name: 设置 Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.12'
 
@@ -28,3 +31,13 @@ jobs:
           CF_PROFILE_ID: ${{ secrets.CF_PROFILE_ID }}
           MODE: exclude                     # 可改成 include
         run: python cf-zt-cn-split.py
+
+      - name: Keepalive
+        if: success()
+        run: |
+          echo "last-sync: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > .last-sync
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .last-sync
+          git commit -m "keepalive: $(date -u '+%Y-%m-%d %H:%M UTC')" || echo "nothing to commit"
+          git push
