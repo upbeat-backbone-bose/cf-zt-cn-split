@@ -16,6 +16,7 @@ jobs:
   sync:
     name: 同步 Split Tunnels
     runs-on: ubuntu-latest
+    timeout-minutes: 15    # 正常耗时数秒；超时后作业会被终止，保活作业仍可继续
     permissions:
       contents: read
     steps:
@@ -47,6 +48,7 @@ jobs:
     # 会在 60 天后被 GitHub 自动停用，这里正是为了重置该计时。
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
