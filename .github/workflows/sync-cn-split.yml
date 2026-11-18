@@ -1,28 +1,36 @@
-name: 每日同步 CN Split Tunnels 到 Cloudflare Zero Trust
-# contents: write 供保活步骤向本仓库提交时间戳（重置 GitHub 60 天无活动计时，
-# 防止 scheduled workflow 被自动停用）
+name: 每周同步 CN Split Tunnels 到 Cloudflare Zero Trust
+# 默认最小权限；写权限只在 keepalive job 内单独授予（见 jobs.keepalive.permissions）。
 permissions:
-  contents: write
+  contents: read
 
 on:
   schedule:
     - cron: '0 3 * * 0'  # 每周日北京时间11:00（UTC 3:00）
   workflow_dispatch:         # 手动触发按钮
 
+concurrency:
+  group: sync-cn-split
+  cancel-in-progress: false   # 定时与手动触发不并发，避免保活推送被拒
+
 jobs:
   sync:
+    name: 同步 Split Tunnels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2/v6.0.3
+      - name: 检出代码
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false   # 不把 token 落到工作区，第三方依赖安装代码读不到
 
-      - name: Set up Python
+      - name: 设置 Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.12'
 
       - name: 安装依赖
-        run: pip install requests
+        run: pip install --disable-pip-version-check -r requirements.txt
 
       - name: 运行同步脚本
         env:
@@ -32,12 +40,33 @@ jobs:
           MODE: exclude                     # 可改成 include
         run: python cf-zt-cn-split.py
 
-      - name: Keepalive
-        if: success()
+  keepalive:
+    name: 保活提交
+    needs: sync
+    # 同步失败也要保活：仓库一旦长期无提交，public 仓库的 scheduled workflow
+    # 会在 60 天后被 GitHub 自动停用，这里正是为了重置该计时。
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0          # 完整历史，保证 rebase 在浅克隆下也能正常工作
+
+      - name: 更新时间戳并推送
         run: |
+          set -euo pipefail
           echo "last-sync: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > .last-sync
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .last-sync
-          git commit -m "keepalive: $(date -u '+%Y-%m-%d %H:%M UTC')" || echo "nothing to commit"
-          git push
+          if git diff --cached --quiet; then
+            echo "last-sync 内容未变化，跳过提交"
+            exit 0
+          fi
+          git commit -m "keepalive: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master
+          git rebase origin/master
+          git push origin HEAD:master

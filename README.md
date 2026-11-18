@@ -136,7 +136,7 @@ Cloudflare Zero Trust Split Tunnels 单策略最多支持 **4000 条**规则，�
 
 ```bash
 # 安装依赖
-pip install requests
+pip install -r requirements.txt
 
 # 设置环境变量
 export CF_API_TOKEN="your_api_token"
