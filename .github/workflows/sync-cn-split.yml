@@ -20,12 +20,12 @@ jobs:
       contents: read
     steps:
       - name: 检出代码
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false   # 不把 token 落到工作区，第三方依赖安装代码读不到
 
       - name: 设置 Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
 
@@ -51,7 +51,7 @@ jobs:
       contents: write
     steps:
       - name: 检出默认分支
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # 必须检出默认分支：workflow_dispatch 可以指定任意分支，若沿用该分支，
           # 保活提交会把该分支的历史一并推入默认分支
