@@ -93,11 +93,28 @@ def update_split_tunnels(cidrs, domains):
     # 必须设超时：Cloudflare API 一旦挂起，作业会一直挂到 6 小时上限，
     # 而 concurrency 组会连带堵住后续定时运行与保活作业
     resp = requests.put(url, json=routes, headers=HEADERS, timeout=(10, 60))
-    if resp.status_code in (200, 204):
+
+    # Cloudflare v4 的响应信封：HTTP 200 也可能带 success:false，
+    # 只看状态码会把失败误报成「同步成功」
+    ok = resp.status_code in (200, 204)
+    body = {}
+    if resp.status_code == 200:
+        try:
+            body = resp.json()
+        except ValueError:
+            ok = False
+        if body.get("success") is False:
+            ok = False
+
+    if ok:
         print(f"✅ 同步成功！{len(routes)} 条路由 | Mode: {MODE}")
     else:
         print(f"❌ 失败 {resp.status_code}: Cloudflare API 请求未成功")
+        if body.get("errors"):
+            print(f"   错误详情：{body.get('errors')}")
         resp.raise_for_status()
+        # 2xx + success:false 时 raise_for_status 不会抛错，必须显式非零退出
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
