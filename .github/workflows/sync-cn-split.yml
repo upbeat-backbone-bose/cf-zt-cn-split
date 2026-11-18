@@ -50,12 +50,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: 检出代码
+      - name: 检出默认分支
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          # 必须检出默认分支：workflow_dispatch 可以指定任意分支，若沿用该分支，
+          # 保活提交会把该分支的历史一并推入默认分支
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0          # 完整历史，保证 rebase 在浅克隆下也能正常工作
 
       - name: 更新时间戳并推送
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           echo "last-sync: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" > .last-sync
@@ -67,6 +72,6 @@ jobs:
             exit 0
           fi
           git commit -m "keepalive: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master
-          git rebase origin/master
-          git push origin HEAD:master
+          git fetch --no-tags origin "+refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          git rebase "origin/$DEFAULT_BRANCH"
+          git push origin "HEAD:$DEFAULT_BRANCH"
