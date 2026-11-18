@@ -8,7 +8,7 @@
 
 - 自动拉取最新中国大陆 IP 数据（来源：[soffchen/GeoIP2-CN](https://github.com/soffchen/GeoIP2-CN) 全运营商聚合版）
 - 自动拉取精选 CN 直连域名（来源：[Loyalsoldier/surge-rules](https://github.com/Loyalsoldier/surge-rules) `direct.txt`）
-- 域名规则优先（DNS 层命中），IP 规则兜底（网络层），在 4000 条限额内最大化分流准确性
+- 规则配额由脚本常量 `TARGET_DOMAIN_N` / `MAX_RULES` 分配：域名规则在前（DNS 层命中），IP 规则兜底（网络层），在 4000 条限额内最大化分流准确性（当前 `TARGET_DOMAIN_N = 0`，即只下发 IP 规则）
 - 通过 Cloudflare Zero Trust API 更新设备策略的 Split Tunnels 规则
 - 支持 `exclude`（CN 直连）和 `include`（仅 CN 走 WARP）两种模式
 - 通过 GitHub Actions 定时自动运行，无需手动维护
@@ -19,7 +19,7 @@
 
 ```text
 Loyalsoldier/surge-rules (direct.txt)     soffchen/GeoIP2-CN (CN-ip-cidr.txt)
-        ↓ 精选 CN 直连域名（取前 100 条）           ↓ 全运营商聚合 CIDR（取前 3900 条）
+        ↓ 精选 CN 直连域名（取前 TARGET_DOMAIN_N 条）    ↓ 全运营商聚合 CIDR（取前 MAX_RULES 条）
                         ↓ 合并，域名规则在前 ↓
                       cf-zt-cn-split.py
                         ↓ Cloudflare Zero Trust API（PUT）
@@ -101,15 +101,16 @@ Loyalsoldier/surge-rules (direct.txt)     soffchen/GeoIP2-CN (CN-ip-cidr.txt)
 
 ## 规则配额分配
 
-Cloudflare Zero Trust Split Tunnels 单策略最多支持 **4000 条**规则，本项目按如下方式分配：
+Cloudflare Zero Trust Split Tunnels 单策略最多支持 **4000 条**规则，本项目按如下方式分配（配额由 `cf-zt-cn-split.py` 顶部的常量决定，改常量即可、无需改本表）：
 
 |规则类型            |条数        |数据来源                                  |优先级     |
 |----------------|----------|--------------------------------------|--------|
-|域名规则（`host`）    |最多 100 条  |Loyalsoldier/surge-rules `direct.txt` |高（DNS 层）|
-|IP 规则（`address`）|最多 3900 条 |soffchen/GeoIP2-CN `CN-ip-cidr.txt`   |低（网络层兜底）|
-|**合计**          |**4000 条**|                                      |        |
+|域名规则（`host`）    |`TARGET_DOMAIN_N` 条（当前 0，即不启用） |Loyalsoldier/surge-rules `direct.txt` |高（DNS 层）|
+|IP 规则（`address`）|`MAX_RULES - TARGET_DOMAIN_N` 条（当前最多 4000） |soffchen/GeoIP2-CN `CN-ip-cidr.txt`   |低（网络层兜底）|
+|**合计**          |**不超过 4000 条**|                                      |        |
 
 > 域名规则排列在前，确保 DNS 层优先命中；IP 规则在后作为网络层兜底。
+> 当前 `TARGET_DOMAIN_N = 0`，因此实际只下发 IP 规则；把该常量改为大于 0 即会重新启用 DNS 层优先命中。
 
 -----
 
@@ -120,7 +121,7 @@ Cloudflare Zero Trust Split Tunnels 单策略最多支持 **4000 条**规则，�
 |数据源                                                                                    |实测条目数       |状态  |备注              |
 |---------------------------------------------------------------------------------------|------------|----|----------------|
 |[soffchen/GeoIP2-CN](https://github.com/soffchen/GeoIP2-CN) `CN-ip-cidr.txt`          |~3900 条     |当前使用|全运营商聚合，由于配额充足可完整载入|
-|[gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip) `china.txt`|~4397 条     |备用  |全运营商聚合，取前 3900 条      |
+|[gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip) `china.txt`|~4397 条     |备用  |全运营商聚合，按配额截断            |
 |[IPdeny aggregated](https://www.ipdeny.com/ipblocks/data/aggregated/cn-aggregated.zone)|~2200 条     |备用  |条目更少，可完整载入            |
 |[metowolf/iplist](https://github.com/metowolf/iplist) `china.txt`                      |~1700 条     |备用  |条目最少                      |
 
@@ -128,7 +129,7 @@ Cloudflare Zero Trust Split Tunnels 单策略最多支持 **4000 条**规则，�
 
 |数据源                                                                                 |条目数                 |状态  |备注                         |
 |------------------------------------------------------------------------------------|--------------------|----|---------------------------|
-|[Loyalsoldier/surge-rules](https://github.com/Loyalsoldier/surge-rules) `direct.txt`|~118000 条（过滤后取 100） |当前使用|人工维护，质量高，脚本过滤非法格式后取前 100 条|
+|[Loyalsoldier/surge-rules](https://github.com/Loyalsoldier/surge-rules) `direct.txt`|~11 万条（每次运行都会拉取）|已接入，当前不下发|人工维护，质量高，脚本过滤非法格式后按 `TARGET_DOMAIN_N` 取前 N 条；`TARGET_DOMAIN_N = 0` 时不产生域名规则|
 
 -----
 
@@ -152,17 +153,17 @@ python cf-zt-cn-split.py
 
 ```
 🔄 拉取最新 CN geo 数据...
-   IP 数据源获取到 3958 条 CIDR
-   域名数据源获取到 1183 条域名（已过滤非法格式）
-   域名规则：100 条 | IP 规则：3900 条 | 合计：4000 条
-✅ 同步成功！4000 条路由 | Mode: exclude
+   IP 数据源获取到 3895 条 CIDR
+   域名数据源获取到 110145 条域名（已过滤非法格式）
+   域名规则：0 条 | IP 规则：3895 条 | 合计：3895 条
+✅ 同步成功！3895 条路由 | Mode: exclude
 ```
 
 -----
 
 ## GitHub Actions 定时任务
 
-默认配置为每天 UTC 02:00（北京时间 10:00）自动运行，也可在 Actions 页面点击 **Run workflow** 手动触发。
+默认配置为**每周日** UTC 03:00（北京时间 11:00）自动运行（cron：`0 3 * * 0`），也可在 Actions 页面点击 **Run workflow** 手动触发。
 
 如需修改定时频率，编辑 `.github/workflows/` 下 workflow 文件中的 `cron` 表达式。
 
@@ -185,8 +186,8 @@ A：数据源 URL 失效，请检查脚本中 `IP_URL` / `DOMAIN_URL` 是否仍�
 **Q：如何确认规则已生效？**  
 A：前往 Cloudflare Zero Trust Dashboard → **Settings → WARP Client → Device settings → 对应策略 → Split Tunnels**，查看规则列表是否已更新。
 
-**Q：为什么只取 100 条域名而不是更多？**  
-A：受限于 4000 条总配额，我们将更多空间留给了 IP CIDR 规则（~3900 条），以确保即使域名未命中，也能通过 IP 段实现高准确度的网络层兜底直连。100 条域名主要覆盖最高频访问的场景（如百度、阿里、各手机厂商等）。
+**Q：为什么当前没有域名规则？**  
+A：域名配额常量 `TARGET_DOMAIN_N` 当前为 0，即只下发 IP CIDR 规则。把该常量改为大于 0（例如 100），域名规则就会排在前面优先命中，剩余配额自动留给 IP；受限于 4000 条总配额，域名条数不宜过多，否则会挤占 IP 兜底容量。
 
 -----
 
