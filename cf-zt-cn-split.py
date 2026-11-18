@@ -90,7 +90,9 @@ def update_split_tunnels(cidrs, domains):
     else:
         url = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/devices/policy/{MODE}"
 
-    resp = requests.put(url, json=routes, headers=HEADERS)
+    # 必须设超时：Cloudflare API 一旦挂起，作业会一直挂到 6 小时上限，
+    # 而 concurrency 组会连带堵住后续定时运行与保活作业
+    resp = requests.put(url, json=routes, headers=HEADERS, timeout=(10, 60))
     if resp.status_code in (200, 204):
         print(f"✅ 同步成功！{len(routes)} 条路由 | Mode: {MODE}")
     else:
