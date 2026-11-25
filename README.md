@@ -1,5 +1,7 @@
 # cf-zt-cn-split
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 自动同步中国大陆 IP 段与直连域名到 Cloudflare Zero Trust 分流隧道（Split Tunnels），实现 CN 流量直连、其余流量走 WARP 的网络分流策略。
 
 -----
@@ -193,4 +195,4 @@ A：域名配额常量 `TARGET_DOMAIN_N` 当前为 0，即只下发 IP CIDR 规�
 
 ## 许可证
 
-MIT License
+本项目基于 [MIT License](LICENSE) 开源，许可证全文见仓库根目录的 [`LICENSE`](LICENSE) 文件。
