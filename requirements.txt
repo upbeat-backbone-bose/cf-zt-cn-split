@@ -2,7 +2,7 @@
 requests==2.34.2
 # 传递依赖一并固定：Dependabot 的 pip 生态只跟踪 requirements.txt 里列出的包，
 # 不固定的话 urllib3/certifi/idna/charset-normalizer 会静默漂移，且不受 Dependabot 管控
-certifi==2026.10.23
+certifi==2026.11.20
 charset-normalizer==3.5.2
 idna==3.20
 urllib3==2.8.0
